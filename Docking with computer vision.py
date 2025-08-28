@@ -82,42 +82,14 @@ class ASVSimulator:
                                detected_poles=self.detected_poles_coords)
 
     def simulate_cv_detection(self):
-        """
-        This function should be replaced or integrated with your real CV system.
         
-        It should:
-        1. Capture an image or receive image data.
-        2. Process the image using your CV algorithms to identify and locate poles.
-        3. Convert the pixel coordinates of the detected poles into real-world 
-           (x, y) coordinates relative to the ASV's current position, or in the global frame.
-           This step typically involves camera calibration and potentially SLAM/localization.
-        4. Return a list of (x, y) tuples for each detected pole.
-           Return None if no poles are detected.
-        """
-        
-        # --- Placeholder for Real CV Integration ---
-        # Here's where your actual CV code would go.
-        # Example:
-        # cap = cv2.VideoCapture(0) # Or load image from a stream
-        # ret, frame = cap.read()
-        # if ret:
-        #     # Process 'frame' to detect poles and get their real-world coordinates
-        #     # For example:
-        #     # detected_points_pixel = my_cv_pole_detector(frame) 
-        #     # real_world_coords = convert_pixels_to_real_world(detected_points_pixel, self.current_pose)
-        #     # return real_world_coords
-        # cap.release()
-        # --- End Placeholder ---
-
-        # For demonstration, we keep the simulated detection:
-        if random.random() > 0.2: # 80% chance of success
+        if random.random() > 0.2:
             print("Computer vision successfully detected poles (simulated).")
-            # These are example real-world coordinates. 
-            # In a real system, these would come from your CV calculations.
+
             return [(9.0, 20.0), (11.0, 20.0)] 
         else:
             print("Computer vision failed to detect poles (simulated).")
-            return None # Indicate no detection
+            return None
         
         
     def stop(self):
@@ -139,7 +111,7 @@ class ASVSimulator:
         print(f"Turn complete. Current yaw: {math.degrees(self.sim_yaw):.2f} degrees.")
 
     def move_straight(self, distance):
-        if distance < 0.05: # Avoid moving for negligible distances
+        if distance < 0.05:
             print(f"Skipping move_straight for negligible distance: {distance:.2f}m")
             return
         print(f"Moving straight for {distance:.2f} meters...")
@@ -160,7 +132,6 @@ class ASVSimulator:
 
     def move_to_right_angle(self, target):
         print(f"Moving to target {target} using right angle turns...")
-        # Calculate current position before movement
         start_x, start_y, _ = self.read_gps()
         
         dx = target[0] - self.sim_x
@@ -178,7 +149,7 @@ class ASVSimulator:
         print(f"Reached target {target}.")
 
     def move_reverse(self, distance):
-        if distance < 0.05: # Avoid moving for negligible distances
+        if distance < 0.05:
             print(f"Skipping move_reverse for negligible distance: {distance:.2f}m")
             return
         print(f"Reversing for {distance:.2f} meters...")
@@ -200,13 +171,11 @@ class ASVSimulator:
     def run(self):
         print("Starting ASV Docking Simulation.")
 
-        # Phase 1: Move to staging point before CV detection
         staging_point = (15, 18)
         print(f"\n--- Phase 1: Moving to staging point {staging_point} ---")
         self.move_to_right_angle(staging_point)
         self.read_gps()
 
-        # Phase 2: Perform CV detection or use fallback
         print("\n--- Phase 2: Performing CV detection ---")
         poles = self.simulate_cv_detection()
         if poles:
@@ -224,46 +193,29 @@ class ASVSimulator:
         time.sleep(1)
 
         midpoint = ((x1 + x2) / 2, (y1 + y2) / 2)
-        
-        # --- CALCULATE MOVEMENT DISTANCES DYNAMICALLY ---
 
-        # Define the desired parking depth *relative to the pole line*.
-        # This is how far past the pole line the ASV should move.
         desired_parking_depth = 0.0 # meters, customizable
 
-        # Calculate the 'entry line' (y-coordinate) based on poles' y-coordinate
-        # and a buffer distance *before* the poles.
-        # This is where the ASV will approach before turning to face the dock.
         approach_buffer_distance = 2.0 # meters, how far in front of the poles to stop
 
-        # Assuming poles are along a vertical line (same Y, varying X),
-        # or the boat approaches perpendicular to the line connecting poles.
-        # Here we assume the poles are primarily defining a line at a certain Y-coordinate.
-        # A more robust approach would calculate a perpendicular line to the pole segment.
         pole_line_y = (y1 + y2) / 2 # Average Y of the poles
         berth_entry_y_coord = pole_line_y - approach_buffer_distance
 
-        # Determine the target Y for docking (the "inside" point)
-        # This is the average Y of the poles plus the desired parking depth.
+
         docking_y_coord = pole_line_y + desired_parking_depth
 
-        # Phase 3: Move in front of the berth (approach point)
-        # The x-coordinate will be the midpoint of the poles, y-coordinate is calculated.
         berth_approach_point = (midpoint[0], berth_entry_y_coord)
         print(f"\n--- Phase 3: Moving to berth approach point {berth_approach_point} ---")
         self.move_to_right_angle(berth_approach_point)
         self.read_gps()
 
-        # Phase 4: Face dock and enter
         print("\n--- Phase 4: Turning to face dock and entering ---")
         self.turn_to(90) # Face North (assuming dock is North-South aligned)
         
-        # Calculate the distance to move *into* the dock
-        # This is the difference between the desired docking Y and the current Y (berth_approach_point's Y).
+
         distance_to_dock_inside = docking_y_coord - self.sim_y
         
-        # Ensure we only move forward (positive distance along current heading)
-        if distance_to_dock_inside < 0: # This means current_y is already past docking_y_coord
+]        if distance_to_dock_inside < 0: # This means current_y is already past docking_y_coord
             print(f"Warning: Already past desired docking Y. Adjusting distance to 0. Current Y: {self.sim_y:.2f}, Docking Y: {docking_y_coord:.2f}")
             distance_to_dock_inside = 0
         
@@ -272,10 +224,7 @@ class ASVSimulator:
         print("ASV is now docked.")
         time.sleep(2)
 
-        # Phase 5: Reverse out of the dock
         print("\n--- Phase 5: Reversing out of the dock ---")
-        # The distance to reverse is from the current docked position back to the berth_entry_y_coord.
-        # This will move the ASV back to roughly the point where it turned to enter the dock.
         distance_to_reverse_out = self.sim_y - berth_entry_y_coord
         
         # Ensure distance is positive for reversing
@@ -286,7 +235,6 @@ class ASVSimulator:
         self.move_reverse(distance_to_reverse_out)
         self.read_gps()
 
-        # Phase 6: Turn and move to final destination
         print(f"\n--- Phase 6: Moving to final destination {self.end_point} ---")
         self.move_to_right_angle(self.end_point)
         self.read_gps()
@@ -301,4 +249,5 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print("\nSimulation stopped by user.")
     finally:
+
         plt.close(sim.visualizer.fig)
